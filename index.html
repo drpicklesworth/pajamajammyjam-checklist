@@ -22,8 +22,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
             padding: 20px;
+            padding-top: 100px;
+            padding-bottom: 40px;
             position: relative;
         }
 
@@ -204,13 +205,31 @@
         .envelope-container {
             perspective: 1000px;
             cursor: pointer;
+            width: 350px;
+            transition: all 0.6s ease;
+        }
+
+        .envelope-container.opened {
+            cursor: default;
+        }
+
+        @media (max-width: 400px) {
+            .envelope-container {
+                width: 300px;
+            }
         }
 
         .envelope {
             width: 350px;
             height: 280px;
             position: relative;
-            transition: transform 0.3s ease;
+            transition: height 0.6s ease 0.8s;
+            margin: 0 auto;
+        }
+
+        .envelope.open {
+            height: auto;
+            min-height: 500px;
         }
 
         @media (max-width: 400px) {
@@ -218,29 +237,21 @@
                 width: 300px;
                 height: 240px;
             }
-            
-            .envelope-flap {
-                border-left: 150px solid transparent !important;
-                border-right: 150px solid transparent !important;
-                border-top: 120px solid #d4c4a0 !important;
-            }
-        }
-
-        .envelope:hover {
-            transform: scale(1.02);
-        }
-
-        .envelope.open {
-            cursor: default;
         }
 
         .envelope-back {
             width: 100%;
             height: 100%;
+            min-height: 280px;
             background: #e8d7b8;
             border: 3px solid #c4a777;
             position: relative;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            transition: min-height 0.6s ease 0.8s;
+        }
+
+        .envelope.open .envelope-back {
+            min-height: 500px;
         }
 
         .envelope-flap {
@@ -252,13 +263,15 @@
             position: absolute;
             top: 0;
             left: 0;
-            transform-origin: top;
-            transition: transform 0.8s ease;
+            transform-origin: top center;
+            transition: transform 0.8s ease, opacity 0.3s ease 0.8s;
             z-index: 3;
         }
 
         .envelope.open .envelope-flap {
-            transform: rotateX(-200deg);
+            transform: rotateX(-180deg);
+            opacity: 0;
+            pointer-events: none;
         }
 
         .wax-seal {
@@ -295,11 +308,11 @@
             top: 55%;
             left: 50%;
             transform: translate(-50%, -50%);
-            padding: 15px;
+            padding: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             overflow: hidden;
             opacity: 0;
-            transition: opacity 0.4s ease 0.4s, top 0.6s ease 0.4s;
+            transition: opacity 0.4s ease 0.4s, top 0.6s ease 0.4s, height 0.6s ease 0.8s;
             border: 1px solid #d4c4a0;
             z-index: 1;
             display: flex;
@@ -309,6 +322,17 @@
         .envelope.open .checklist-content {
             opacity: 1;
             top: 50%;
+            height: 90%;
+        }
+
+        .checklist-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2a2a2a;
+            text-align: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #d4c4a0;
         }
 
         .task-list {
@@ -388,12 +412,6 @@
             color: #8b7355;
             text-align: center;
         }
-
-        .progress-mini {
-            font-size: 9px;
-            color: #4a9b4a;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
@@ -423,18 +441,18 @@
     <div class="subtitle" id="subtitle">Party Checklist</div>
     <div class="instruction" id="instruction">Tap the envelope to open</div>
 
-    <div class="envelope-container">
+    <div class="envelope-container" id="envelopeContainer">
         <div class="envelope" id="envelope" onclick="openEnvelope()">
             <div class="envelope-back">
                 <div class="envelope-flap"></div>
                 <div class="wax-seal">PJ</div>
                 <div class="checklist-content">
+                    <div class="checklist-title">Tasks</div>
                     <div class="task-list" id="taskList"></div>
                     <div class="navigation-arrows">
                         <span class="nav-arrow" id="prevArrow" onclick="prevPage(event)">‹</span>
                         <div>
                             <div class="page-info" id="pageInfo">Page 1</div>
-                            <div class="progress-mini" id="progressMini">0/0</div>
                         </div>
                         <span class="nav-arrow" id="nextArrow" onclick="nextPage(event)">›</span>
                     </div>
@@ -448,13 +466,32 @@
         const correctPassword = "party";
         
         // EDIT GOOGLE APPS SCRIPT URL HERE
-        const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwEgdraxezoOb9Etcx6RAvVySJW9ZUXw-7BmM60Nr8JnaWeeHz3AM_1gzXgNjQrjEqViA/exec';
+        const SYNC_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
         
         let tasks = [];
         let currentPage = 0;
         let tasksPerPage = 6;
         let isOpen = false;
         let userName = '';
+
+        // Function to calculate how many tasks fit per page
+        function calculateTasksPerPage() {
+            if (!isOpen) return 6; // Default before opening
+            
+            const container = document.getElementById('taskList');
+            if (!container) return 6;
+            
+            const containerHeight = container.clientHeight;
+            const taskItem = container.querySelector('.task-item');
+            
+            if (!taskItem) return 6;
+            
+            const taskHeight = taskItem.offsetHeight;
+            const gap = 5; // CSS gap between items
+            const availableTasks = Math.floor(containerHeight / (taskHeight + gap));
+            
+            return Math.max(1, availableTasks); // At least 1 task
+        }
 
         // Check if name is already stored
         if (localStorage.getItem('pjj_party_name')) {
@@ -534,9 +571,17 @@
         function openEnvelope() {
             if (!isOpen) {
                 document.getElementById('envelope').classList.add('open');
+                document.getElementById('envelopeContainer').classList.add('opened');
                 document.getElementById('instruction').classList.add('hidden');
                 document.getElementById('subtitle').classList.add('show');
                 isOpen = true;
+                
+                // Wait for animation to complete, then recalculate tasks per page
+                setTimeout(() => {
+                    tasksPerPage = calculateTasksPerPage();
+                    currentPage = 0;
+                    renderPage();
+                }, 1400); // Wait for all transitions to complete
             }
         }
 
@@ -595,7 +640,7 @@
             tasks.forEach((_, index) => {
                 if (loadCheckboxState(index)) completed++;
             });
-            document.getElementById('progressMini').textContent = `${completed}/${tasks.length}`;
+            // Progress count removed - no longer displayed
         }
 
         function prevPage(event) {
@@ -648,27 +693,36 @@
 
         // Sync progress to Google Sheets
         async function syncProgress() {
-            if (!userName) return;
+            if (!userName) {
+                console.log('⚠️ No username - skipping sync');
+                return;
+            }
             
             let completed = 0;
             tasks.forEach((_, index) => {
                 if (loadCheckboxState(index)) completed++;
             });
 
+            const payload = {
+                name: userName,
+                completed: completed
+            };
+
+            console.log('📤 Syncing to server:', payload);
+            console.log('📍 URL:', SYNC_URL);
+
             try {
-                await fetch(SYNC_URL, {
+                const response = await fetch(SYNC_URL, {
                     method: 'POST',
-                    mode: 'no-cors',
+                    redirect: 'follow',
                     headers: {
-                        'Content-Type': 'application/json',
+                        'Content-Type': 'text/plain',
                     },
-                    body: JSON.stringify({
-                        name: userName,
-                        completed: completed
-                    })
+                    body: JSON.stringify(payload)
                 });
+                console.log('✅ Sync complete');
             } catch (error) {
-                console.error('Sync error:', error);
+                console.error('❌ Sync error:', error);
             }
         }
 
