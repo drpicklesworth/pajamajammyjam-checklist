@@ -428,7 +428,7 @@
     -->
 
     <!-- Name Entry Overlay -->
-    <div class="name-overlay" id="nameOverlay">
+    <div class="name-overlay" id="nameOverlay" style="display: none;">
         <div class="name-box">
             <h2>Enter Your Name</h2>
             <input type="text" id="nameInput" placeholder="Your name" />
@@ -530,11 +530,11 @@
                     // Valid codeName found - skip name entry
                     contestantName = name;
                     userName = 'Anonymous'; // Set a default username for tracking
-                    document.getElementById('nameOverlay').classList.add('hidden');
                     const subtitleEl = document.getElementById('subtitle');
                     subtitleEl.textContent = `Party Checklist - ${contestantName}`;
                 } else {
-                    // Invalid codeName - show normal name entry
+                    // Invalid codeName - show name entry
+                    document.getElementById('nameOverlay').style.display = 'flex';
                     if (localStorage.getItem('pjj_party_name')) {
                         userName = localStorage.getItem('pjj_party_name');
                         document.getElementById('nameOverlay').classList.add('hidden');
@@ -542,10 +542,11 @@
                 }
             });
         } else {
-            // No URL param - check if name is already stored
+            // No URL param - show name entry if needed
             if (localStorage.getItem('pjj_party_name')) {
                 userName = localStorage.getItem('pjj_party_name');
-                document.getElementById('nameOverlay').classList.add('hidden');
+            } else {
+                document.getElementById('nameOverlay').style.display = 'flex';
             }
         }
 
