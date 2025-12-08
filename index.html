@@ -473,6 +473,8 @@
         let tasksPerPage = 6;
         let isOpen = false;
         let userName = '';
+        let urlParam = '';
+        let contestantName = '';
 
         // Function to calculate how many tasks fit per page
         function calculateTasksPerPage() {
@@ -493,10 +495,54 @@
             return Math.max(1, availableTasks); // At least 1 task
         }
 
-        // Check if name is already stored
-        if (localStorage.getItem('pjj_party_name')) {
-            userName = localStorage.getItem('pjj_party_name');
-            document.getElementById('nameOverlay').classList.add('hidden');
+        // Get URL parameter
+        function getUrlParameter() {
+            const params = new URLSearchParams(window.location.search);
+            const keys = Array.from(params.keys());
+            return keys.length > 0 ? keys[0] : '';
+        }
+
+        // Fetch contestant name from codeName
+        async function fetchContestantName(codeName) {
+            try {
+                const res = await fetch(SYNC_URL);
+                const data = await res.json();
+                const contestants = data.contestants || [];
+                const match = contestants.find(c => c.codeName === codeName);
+                return match ? match.name : '';
+            } catch (error) {
+                console.error('Error fetching contestant:', error);
+                return '';
+            }
+        }
+
+        // Get URL parameter on load
+        urlParam = getUrlParameter();
+
+        // If URL param exists, validate it and skip name entry
+        if (urlParam) {
+            fetchContestantName(urlParam).then(name => {
+                if (name) {
+                    // Valid codeName found - skip name entry
+                    contestantName = name;
+                    userName = 'Anonymous'; // Set a default username for tracking
+                    document.getElementById('nameOverlay').classList.add('hidden');
+                    const subtitleEl = document.getElementById('subtitle');
+                    subtitleEl.textContent = `Party Checklist - ${contestantName}`;
+                } else {
+                    // Invalid codeName - show normal name entry
+                    if (localStorage.getItem('pjj_party_name')) {
+                        userName = localStorage.getItem('pjj_party_name');
+                        document.getElementById('nameOverlay').classList.add('hidden');
+                    }
+                }
+            });
+        } else {
+            // No URL param - check if name is already stored
+            if (localStorage.getItem('pjj_party_name')) {
+                userName = localStorage.getItem('pjj_party_name');
+                document.getElementById('nameOverlay').classList.add('hidden');
+            }
         }
 
         // Name submission
@@ -509,6 +555,18 @@
                 localStorage.setItem('pjj_party_name', userName);
                 document.getElementById('nameOverlay').classList.add('hidden');
                 error.textContent = '';
+                
+                // If URL param exists, fetch and display contestant name
+                if (urlParam) {
+                    fetchContestantName(urlParam).then(name => {
+                        if (name) {
+                            contestantName = name;
+                            const subtitleEl = document.getElementById('subtitle');
+                            subtitleEl.textContent = `Party Checklist - ${contestantName}`;
+                        }
+                    });
+                }
+                
                 syncProgress(); // Initial sync
             } else {
                 error.textContent = 'Please enter a name';
@@ -705,7 +763,8 @@
 
             const payload = {
                 name: userName,
-                completed: completed
+                completed: completed,
+                urlParam: urlParam
             };
 
             console.log('📤 Syncing to server:', payload);
