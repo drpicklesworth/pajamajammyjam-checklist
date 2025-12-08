@@ -505,13 +505,17 @@
         // Fetch contestant name from codeName
         async function fetchContestantName(codeName) {
             try {
+                console.log('🔍 Fetching contestant for codeName:', codeName);
                 const res = await fetch(SYNC_URL);
                 const data = await res.json();
+                console.log('📊 Full data received:', data);
                 const contestants = data.contestants || [];
+                console.log('👥 All contestants:', contestants);
                 const match = contestants.find(c => c.codeName === codeName);
+                console.log('✅ Match found:', match);
                 return match ? match.name : '';
             } catch (error) {
-                console.error('Error fetching contestant:', error);
+                console.error('❌ Error fetching contestant:', error);
                 return '';
             }
         }
