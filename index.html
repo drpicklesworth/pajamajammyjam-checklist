@@ -353,6 +353,13 @@
             transition: background 0.2s ease;
         }
 
+        .puzzle-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
         .task-item:active {
             background: rgba(212, 196, 160, 0.2);
         }
@@ -374,6 +381,29 @@
             line-height: 1.3;
             flex-grow: 1;
             cursor: pointer;
+        }
+
+        .task-input {
+            width: 100px;
+            padding: 4px 6px;
+            font-size: 11px;
+            border: 1px solid #d4c4a0;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            margin-left: 8px;
+        }
+
+        .task-feedback {
+            color: #ff6b6b;
+            font-size: 10px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            min-height: 12px;
+            padding-left: 6px;
+        }
+
+        .task-feedback.show {
+            opacity: 1;
         }
 
         .task-item.completed .task-text {
@@ -614,6 +644,13 @@
             try {
                 const response = await fetch('party-tasks.json');
                 tasks = await response.json();
+                
+                // Add the special puzzle task at the end
+                tasks.push({
+                    text: "Discover the tiny number (hint: it's not 50)",
+                    type: "puzzle",
+                    answer: "12011975"
+                });
             } catch (error) {
                 console.error('Error loading tasks:', error);
                 tasks = [
@@ -625,7 +662,12 @@
                     "Rate the party snacks from best to worst",
                     "Reveal your most embarrassing pajama story",
                     "Organize a quick game of charades",
-                    "Request your favorite song to be played"
+                    "Request your favorite song to be played",
+                    {
+                        text: "Discover the tiny number (hint: it's not 50)",
+                        type: "puzzle",
+                        answer: "12011975"
+                    }
                 ];
             }
             renderPage();
@@ -660,16 +702,42 @@
                 const globalIdx = startIdx + idx;
                 const isChecked = loadCheckboxState(globalIdx);
                 
+                // Check if this is a puzzle task
+                const isPuzzle = typeof task === 'object' && task.type === 'puzzle';
+                const taskText = isPuzzle ? task.text : task;
+                
                 const taskItem = document.createElement('div');
                 taskItem.className = 'task-item' + (isChecked ? ' completed' : '');
-                taskItem.innerHTML = `
-                    <input type="checkbox" 
-                           class="task-checkbox" 
-                           id="task-${globalIdx}" 
-                           ${isChecked ? 'checked' : ''}
-                           onchange="handleCheckboxChange(${globalIdx})">
-                    <label class="task-text" for="task-${globalIdx}" onclick="toggleTask(${globalIdx})">${task}</label>
-                `;
+                
+                if (isPuzzle) {
+                    taskItem.innerHTML = `
+                        <input type="checkbox" 
+                               class="task-checkbox" 
+                               id="task-${globalIdx}" 
+                               ${isChecked ? 'checked' : ''}
+                               onchange="handlePuzzleCheckboxChange(${globalIdx})">
+                        <label class="task-text">${taskText}</label>
+                        <div class="puzzle-wrapper">
+                            <input type="text" 
+                                   class="task-input" 
+                                   id="puzzle-${globalIdx}" 
+                                   placeholder="?" 
+                                   value="${isChecked ? task.answer : ''}"
+                                   onkeypress="checkPuzzle(event, ${globalIdx}, '${task.answer}')"
+                                   ${isChecked ? 'disabled' : ''}>
+                            <span class="task-feedback" id="feedback-${globalIdx}">nope!</span>
+                        </div>
+                    `;
+                } else {
+                    taskItem.innerHTML = `
+                        <input type="checkbox" 
+                               class="task-checkbox" 
+                               id="task-${globalIdx}" 
+                               ${isChecked ? 'checked' : ''}
+                               onchange="handleCheckboxChange(${globalIdx})">
+                        <label class="task-text" for="task-${globalIdx}" onclick="toggleTask(${globalIdx})">${taskText}</label>
+                    `;
+                }
                 
                 container.appendChild(taskItem);
             });
@@ -752,6 +820,55 @@
             const checkbox = document.getElementById(`task-${index}`);
             checkbox.checked = !checkbox.checked;
             handleCheckboxChange(index);
+        }
+
+        // Check puzzle answer
+        function checkPuzzle(event, index, correctAnswer) {
+            if (event.key === 'Enter') {
+                const input = event.target;
+                const feedback = document.getElementById(`feedback-${index}`);
+                const checkbox = document.getElementById(`task-${index}`);
+                
+                if (input.value.trim() === correctAnswer) {
+                    // Correct answer!
+                    checkbox.checked = true;
+                    input.disabled = true;
+                    const taskItem = checkbox.closest('.task-item');
+                    taskItem.classList.add('completed');
+                    saveCheckboxState(index, true);
+                    updateProgress();
+                    syncProgress();
+                } else {
+                    // Wrong answer
+                    feedback.classList.add('show');
+                    input.value = '';
+                    setTimeout(() => {
+                        feedback.classList.remove('show');
+                    }, 1500);
+                }
+            }
+        }
+
+        // Handle puzzle checkbox change (when unchecked)
+        function handlePuzzleCheckboxChange(index) {
+            const checkbox = document.getElementById(`task-${index}`);
+            const input = document.getElementById(`puzzle-${index}`);
+            const taskItem = checkbox.closest('.task-item');
+            
+            // Only allow unchecking, not checking
+            if (checkbox.checked) {
+                // They tried to check it manually - prevent it
+                checkbox.checked = false;
+                return;
+            }
+            
+            // Unchecked - clear and re-enable input
+            input.value = '';
+            input.disabled = false;
+            taskItem.classList.remove('completed');
+            saveCheckboxState(index, false);
+            updateProgress();
+            syncProgress();
         }
 
         // Sync progress to Google Sheets
