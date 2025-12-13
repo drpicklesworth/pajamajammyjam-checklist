@@ -500,7 +500,7 @@
         
         let tasks = [];
         let currentPage = 0;
-        let tasksPerPage = 6;
+        let tasksPerPage = 5;
         let isOpen = false;
         let userName = '';
         let urlParam = '';
@@ -508,21 +508,20 @@
 
         // Function to calculate how many tasks fit per page
         function calculateTasksPerPage() {
-            if (!isOpen) return 6; // Default before opening
+            // const container = document.getElementById('taskList');
+            // if (!container) return 6;
+            return 6;
             
-            const container = document.getElementById('taskList');
-            if (!container) return 6;
+            //const containerHeight = container.clientHeight;
+            //const taskItem = container.querySelector('.task-item');
             
-            const containerHeight = container.clientHeight;
-            const taskItem = container.querySelector('.task-item');
+            //if (!taskItem) return 6;
             
-            if (!taskItem) return 6;
+            //const taskHeight = taskItem.offsetHeight;
+            //const gap = 5; // CSS gap between items
+            //const availableTasks = Math.floor(containerHeight / (taskHeight + gap));
             
-            const taskHeight = taskItem.offsetHeight;
-            const gap = 5; // CSS gap between items
-            const availableTasks = Math.floor(containerHeight / (taskHeight + gap));
-            
-            return Math.max(1, availableTasks); // At least 1 task
+            //return Math.max(1, availableTasks); // At least 1 task
         }
 
         // Get URL parameter
